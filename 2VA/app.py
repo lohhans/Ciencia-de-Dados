@@ -1,85 +1,100 @@
-import streamlit as st
+import time
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib import pyplot
 import numpy as np
+import streamlit as st
+import plotly.graph_objects as go
 
-#ok
-@st.cache
-def load_data():
 
-    dataset = pd.read_csv("Vendas.csv",encoding = 'iso-8859-1', sep=";")
+def gerar_dataset():
 
-    anosSet = set()
-    datas = dataset["Data Venda"]
-    anos = {"ano":[]}
-    meses = {"Mes":[]}
+    dataset_original = pd.read_csv(
+        "Vendas.csv", encoding='iso-8859-1', sep=";")  # dataset
+
+    temp_anos = set()  # temporário
+    datas = dataset_original["Data Venda"]  # datas brutas
+
+    meses = {"Mes": []}
+    anos = {"Ano": []}
 
     for k in range(len(datas)):
         d = int(datas[k][6::])
-        anos["ano"].append(int(datas[k][6::]))
         meses["Mes"].append(int(datas[k][3:5]))
-        anosSet.add(d)
+        anos["Ano"].append(int(datas[k][6::]))
+        temp_anos.add(d)
 
-    anosDic = anos
-    anos = pd.DataFrame(anos)
-    meses = pd.DataFrame(meses)
+    meses = pd.DataFrame(meses)  # meses obtidos
+    anos = pd.DataFrame(anos)  # anos abotidos
 
-    dataset.insert(0, "Ano", anos, allow_duplicates=False)
-    dataset.insert(0, "Mes", meses, allow_duplicates=False)
+    dataset_original.insert(
+        0, "Mes", meses, allow_duplicates=False)  # meses tratados
+    dataset_original.insert(
+        0, "Ano", anos, allow_duplicates=False)  # anos tratados
 
-    return dataset
+    return dataset_original
 
-#ok
-def valorVendasAno(data):
+# A - Faça um gráfico do total de vendas por ano
 
-    datRank = data
-    dic = {"Ano":[],"ValorVenda":[]}
-    anosSet = [2014,2015,2016,2017,2018,2019]
-    for i in anosSet:
-        dat = datRank.loc[datRank["Ano"] == int(i)]
-        dic["Ano"].append(i)
-        valores = dat["ValorVenda"]
-        valores = valores.values.tolist()
+
+def total_vendas_por_ano(data):
+
+    with st.spinner('Analisando dados...'):
+
+        dic = {"Ano": [], "ValorVenda": []}
+        anosSet = [2014, 2015, 2016, 2017, 2018, 2019]
+
+        for i in anosSet:
+            dat = data.loc[data["Ano"] == int(i)]
+            dic["Ano"].append(i)
+            valores = dat["ValorVenda"]
+            valores = valores.values.tolist()
+            for v in range(len(valores)):
+                valores[v] = float(valores[v].replace(",", "."))
+            soma = sum(valores)
+            dic["ValorVenda"].append(soma)
+
+        dataset = pd.DataFrame(dic)
+
+        sns.catplot(x="Ano", y="ValorVenda", kind="bar", data=dataset, estimator=np.sum).set(
+            title="Gráfico do total de vendas por ano").fig.set_figwidth(16)
+        st.pyplot()
+
+    st.success('Pronto! :)')
+
+# B - Faça um gráfico do total de vendas por categoria
+
+
+def total_vendas_por_categoria(data):
+
+    with st.spinner('Analisando dados...'):
+
+        dic = {"Ano": data["Ano"], "ValorVenda": [],
+               "Categoria": data["Categoria"]}
+
+        valores = data["ValorVenda"].values.tolist()
+
         for v in range(len(valores)):
             valores[v] = float(valores[v].replace(",", "."))
 
-        soma = sum(valores)
-        dic["ValorVenda"].append(soma)
+        dic["ValorVenda"] = valores
+        dataset = pd.DataFrame(dic)
 
-    dic = pd.DataFrame(dic)
+        sns.catplot(x="Categoria", y="ValorVenda", kind="bar", data=dataset, estimator=np.sum).set(
+            title="Total de vendas por categoria").fig.set_figwidth(16)
+        st.pyplot()
 
-    dats = dic
-    fig, ax = plt.subplots()
-    sns.barplot(data = dats, x="Ano", y="ValorVenda", palette="Set1")
-    #dic.hist(column="Ano",bins = 11)
-    plt.title("Vendas por Ano (Em Reais)")
+    st.success('Pronto! :)')
 
-    st.pyplot()
-    return dic
+# C - Faça um gráfico do total de vendas por categoria por ano
 
-#ok
-def valorVendasCategoria(data):
 
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"]}
+def total_vendas_por_categoria_por_ano(data):
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+    with st.spinner('Analisando dados...'):
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-
-    sns.barplot(data = dats, x="Categoria", y="ValorVenda", estimator = np.sum, palette="Set2")
-    plt.title("Vendas por Categoria (Em Reais)")
-
-    st.pyplot()
-
-#ok
-def valorVendasCategoriaAno(data):
-        dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"]}
+        dic = {"Ano": data["Ano"], "ValorVenda": [],
+               "Categoria": data["Categoria"]}
 
         valores = data["ValorVenda"]
         valores = valores.values.tolist()
@@ -87,389 +102,478 @@ def valorVendasCategoriaAno(data):
             valores[v] = float(valores[v].replace(",", "."))
 
         dic["ValorVenda"] = valores
-        dats = pd.DataFrame(dic)
+        dataset = pd.DataFrame(dic)
 
-        sns.barplot(data = dats, x="Categoria", y="ValorVenda", hue = "Ano", estimator = np.sum, palette="Set2")
-        plt.title("Vendas por Categoria por Ano (Em Reais)")
-
+        sns.catplot(x="Categoria", y="ValorVenda", kind="bar", hue="Ano", data=dataset, estimator=np.sum).set(
+            title="Total de vendas por categoria por ano").fig.set_figwidth(16)
         st.pyplot()
 
-#ok
-def valorVendasAnoCategoria(data):
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"]}
+    st.success('Pronto! :)')
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+# D - Faça um gráfico do total de vendas por ano e categoria
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
 
-    sns.barplot(data = dats, x="Ano", y="ValorVenda", hue = "Categoria", estimator = np.sum, palette="Set2")
-    plt.title("Vendas por Ano por Categoria (Em Reais)")
+def total_vendas_por_ano_e_categoria(data):
 
-    st.pyplot()
+    with st.spinner('Analisando dados...'):
 
-#ok
-def valorVendasMes(data):
+        dic = {"Ano": data["Ano"], "ValorVenda": [],
+               "Categoria": data["Categoria"]}
 
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"],"Mes":data["Mes"]}
+        valores = data["ValorVenda"]
+        valores = valores.values.tolist()
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+        dic["ValorVenda"] = valores
+        dataset = pd.DataFrame(dic)
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    anosSet = [2014,2015,2016,2017,2018,2019]
-
-    for ano in anosSet:
-        datsA = dats.loc[dats["Ano"] == ano]
-        sns.barplot(data = datsA, x="Mes", y="ValorVenda", hue = "Categoria", estimator = np.sum, palette="bright")
-        plt.title("Vendas por Categoria por Mes de cada Ano (Em Reais) -> "+str(ano))
-
+        sns.catplot(x="Ano", y="ValorVenda", kind="bar", hue="Categoria", data=dataset, estimator=np.sum).set(
+            title="Total de vendas por categoria por ano").fig.set_figwidth(16)
         st.pyplot()
 
-#ok
-def valorVendasProdutoFabricante(data):
-    st.write("Vendas de Produtos por Fabricante (Em Reais) ")
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"],"Mes":data["Mes"],"Produto":data["Produto"],"Fabricante":data["Fabricante"],"Loja":data["Loja"]}
+    st.success('Pronto! :)')
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    fabris = ["Motorola", "Samsung", "LG", "Sony", "Consul", "Brastemp", "Panasonic", "Electrolux", "HP", "Dell", "Epson", "Britânia", "Arno", "Philco"]
-    a4_dims = (35, 15)
+# E - Faça um gráfico do total de vendas por categoria pelos meses para cada ano
 
-    fig, ax = pyplot.subplots(figsize=a4_dims)
-    sns.barplot(data = dats, x="Fabricante", y="ValorVenda", hue = "Produto", estimator = np.sum, palette="tab20", ax = ax)
-    plt.title("Vendas de Produtos por Fabricante (Em Reais)")
 
+def total_vendas_por_categoria_pelos_meses_para_cada_ano(data):
+
+    with st.spinner('Analisando dados...'):
+
+        dic = {"Ano": data["Ano"], "ValorVenda": [],
+               "Categoria": data["Categoria"], "Mes": data["Mes"]}
+        anosSet = [2014, 2015, 2016, 2017, 2018, 2019]
+
+        valores = data["ValorVenda"]
+        valores = valores.values.tolist()
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
+
+        dic["ValorVenda"] = valores
+        dataset = pd.DataFrame(dic)
+
+        for ano in anosSet:
+            dataset_for = dataset.loc[dataset["Ano"] == ano]
+            print(dataset_for)
+            sns.catplot(x="Mes", y="ValorVenda", kind="bar", hue="Categoria", data=dataset_for, estimator=np.sum).set(
+                title="Total de vendas por categoria pelos meses para o ano de "+str(ano)).fig.set_figwidth(16)
+            st.pyplot()
+
+    st.success('Pronto! :)')
+
+# F - Faça um gráfico dos produto mais vendido por cada fabricante
+
+
+def produto_mais_vendido_por_cada_fabricante(data):
+
+    with st.spinner('Analisando dados...'):
+
+        dic = {"Ano": data["Ano"], "ValorVenda": [], "Categoria": data["Categoria"], "Mes": data["Mes"],
+               "Produto": data["Produto"], "Fabricante": data["Fabricante"], "Loja": data["Loja"]}
+
+        valores = data["ValorVenda"].values.tolist()
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
+
+        dic["ValorVenda"] = valores
+        dataset = pd.DataFrame(dic)
+        fabricantes = ["Motorola", "Samsung", "LG", "Sony", "Consul", "Brastemp",
+                       "Panasonic", "Electrolux", "HP", "Dell", "Epson", "Britânia", "Arno", "Philco"]
+
+        for fabricante in fabricantes:
+            dataset_for = dataset.loc[dataset["Fabricante"] == fabricante]
+            sns.catplot(x="Fabricante", y="ValorVenda", kind="bar", hue="Produto", data=dataset_for, estimator=np.sum).set(
+                title="Produto mais vendido para o fabricante "+str(fabricante)).fig.set_figwidth(8)
+            st.pyplot()
+
+    st.success('Pronto! :)')
+
+# G - Faça um gráfico das vendas das lojas por categoria
+
+
+def vendas_das_lojas_por_categoria(data):
+
+    with st.spinner('Analisando dados...'):
+
+        dic = {"Ano": data["Ano"], "ValorVenda": [], "Categoria": data["Categoria"], "Mes": data["Mes"],
+               "Produto": data["Produto"], "Fabricante": data["Fabricante"], "Loja": data["Loja"]}
+        lojas = ["R1296", "BA7783", "JP8825",
+                 "RG7742", "AL1312", "GA7751", "JB6325"]
+
+        valores = data["ValorVenda"].values.tolist()
+
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
+
+        dic["ValorVenda"] = valores
+        dataset = pd.DataFrame(dic)
+
+        sns.catplot(x="Loja", y="ValorVenda", kind="bar", hue="Categoria", data=dataset, estimator=np.sum).set(
+            title="Vendas das lojas por categoria (geral)").fig.set_figwidth(16)
+
+        for loja in lojas:
+            dataset_for = dataset.loc[dataset["Loja"] == loja]
+            sns.catplot(x="Categoria", y="ValorVenda", kind="bar", hue="Categoria", data=dataset_for, estimator=np.sum).set(
+                title="Vendas das lojas por categoria para a loja "+str(loja)).fig.set_figwidth(8)
+            st.pyplot()
+
+    st.success('Pronto! :)')
+
+# H - Faça um Ranking dos produtos com maiores vendas no geral e por loja
+
+
+def ranking_dos_produtos_com_maiores_venda_geral(data):
+    dataFrame = data
+    sns.catplot(x="Valor Vendas", y="Produto", kind="bar", data=dataFrame, estimator=np.sum, palette="tab10").set(
+        title="Ranking dos produtos com maiores vendas no geral").fig.set_figwidth(8)
     st.pyplot()
 
-    for fabricante in fabris:
-        datF = dats.loc[dats["Fabricante"] == fabricante]
-        st.write("Vendas de Produtos por Fabricante (Em Reais) "+str(fabricante))
-        a4_dims = (12, 9)
-        fig, ax = pyplot.subplots(figsize=a4_dims)
-        sns.barplot(data = datF, x="Fabricante", y="ValorVenda", hue = "Produto", estimator = np.sum, palette="tab20", ax = ax)
-        plt.title("Vendas de Produtos por Fabricante (Em Reais) "+str(fabricante))
+
+def ranking_dos_produtos_com_maiores_venda_por_loja(data, produtos):
+    dataFrame = data
+    produtos_set = produtos
+    lojas = ["R1296", "BA7783", "JP8825",
+             "RG7742", "AL1312", "GA7751", "JB6325"]
+    for loja in lojas:
+        dataset_for_loja = dataset.loc[dataset["Loja"] == loja]
+
+        valor_das_vendas = []
+        for produto in produtos_set:
+            dataset_for_produto = dataset_for_loja.loc[dataset_for_loja["Produto"] == produto]
+            lista = dataset_for_produto["ValorVenda"].values.tolist()
+
+            soma = 0
+            for k in lista:
+                soma += float(k.replace(",", "."))
+
+            valor_das_vendas.append(soma)
+
+        dataFrame = pd.DataFrame(
+            {"Produto": list(produtos), "Valor Vendas": valor_das_vendas})
+        dataFrame = dataFrame.sort_values(
+            ['Valor Vendas', 'Produto'], ascending=False)
+
+        sns.catplot(x="Valor Vendas", y="Produto", kind="bar", data=dataFrame, estimator=np.sum, palette="tab10").set(
+            title="Ranking dos produtos com maiores vendas para a loja "+str(loja)).fig.set_figwidth(8)
         st.pyplot()
 
-#ok
-def valorVendasLojaCategoria(data):
-    st.write("Vendas das lojas por categoria (Em Reais)")
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"],"Mes":data["Mes"],"Produto":data["Produto"],"Fabricante":data["Fabricante"],"Loja":data["Loja"]}
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+def ranking_dos_produtos_com_maiores_venda_geral_e_por_loja(data):
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    #fabris = ["Motorola", "Samsung", "LG", "Sony", "Consul", "Brastemp", "Panasonic", "Electrolux", "HP", "Dell", "Epson", "Britânia", "Arno", "Philco"]
-    #a4_dims = (10,7)
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-    #fig, ax = pyplot.subplots(figsize=a4_dims)
-    sns.barplot(data = dats, x="Loja", y="ValorVenda", hue = "Categoria", estimator = np.sum, palette="tab10")
-    plt.title("Vendas das lojas por categoria (Em Reais)")
+    with st.spinner('Analisando dados...'):
 
+        dic = {"Produto": data["Produto"], "Ano": data["Ano"], "ValorVenda": [
+        ], "Fabricante": data["Fabricante"], "Loja": data["Loja"]}
+        valores = data["ValorVenda"].values.tolist()
+
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
+
+        dic["ValorVenda"] = valores
+
+        dataset = pd.DataFrame(dic)
+
+        produtos_set = set()
+
+        for p in range(len(dataset["Produto"])):
+            produto = dic["Produto"][p]
+            produtos_set.add(produto)
+
+        valor_das_vendas = []
+        for produto in produtos_set:
+            dataset_for_produto_geral = dataset.loc[dataset["Produto"] == produto]
+            lista = dataset_for_produto_geral["ValorVenda"].values.tolist()
+            soma = sum(lista)
+            valor_das_vendas.append(soma)
+
+        dataFrame = pd.DataFrame(
+            {"Produto": list(produtos_set), "Valor Vendas": valor_das_vendas})
+        dataFrame = dataFrame.sort_values(
+            ['Valor Vendas', 'Produto'], ascending=False)
+
+        ranking_dos_produtos_com_maiores_venda_geral(dataFrame)
+        ranking_dos_produtos_com_maiores_venda_por_loja(
+            dataFrame, produtos_set)
+
+    st.success('Pronto! :)')
+
+
+# I - Faça um Ranking dos produtos com menores vendas no geral e por loja
+
+
+def ranking_dos_produtos_com_menores_venda_geral(data):
+    dataFrame = data
+    sns.catplot(x="Valor Vendas", y="Produto", kind="bar", data=dataFrame, estimator=np.sum, palette="tab10").set(
+        title="Ranking dos produtos com menores vendas no geral").fig.set_figwidth(8)
     st.pyplot()
 
-    for loja in loj:
-        datL = dats.loc[dats["Loja"] == loja]
-        sns.barplot(data = datL, x="Categoria", y="ValorVenda", estimator = np.sum, palette="tab10")
-        plt.title("Vendas das lojas por categoria (Em Reais) -> Loja:"+str(loja))
+
+def ranking_dos_produtos_com_menores_venda_por_loja(data, produtos):
+    dataFrame = data
+    produtos_set = produtos
+    lojas = ["R1296", "BA7783", "JP8825",
+             "RG7742", "AL1312", "GA7751", "JB6325"]
+    for loja in lojas:
+        dataset_for_loja = dataset.loc[dataset["Loja"] == loja]
+
+        valor_das_vendas = []
+        for produto in produtos_set:
+            dataset_for_produto = dataset_for_loja.loc[dataset_for_loja["Produto"] == produto]
+            lista = dataset_for_produto["ValorVenda"].values.tolist()
+
+            soma = 0
+            for k in lista:
+                soma += float(k.replace(",", "."))
+
+            valor_das_vendas.append(soma)
+
+        dataFrame = pd.DataFrame(
+            {"Produto": list(produtos), "Valor Vendas": valor_das_vendas})
+        dataFrame = dataFrame.sort_values(
+            ['Valor Vendas', 'Produto'], ascending=True)
+
+        sns.catplot(x="Valor Vendas", y="Produto", kind="bar", data=dataFrame, estimator=np.sum, palette="tab10").set(
+            title="Ranking dos produtos com menores vendas para a loja "+str(loja)).fig.set_figwidth(8)
         st.pyplot()
 
-####################### Rankings #############################
-#ok
-def rankingProdutos(data):
-    st.write("Ranking Produtos Geral")
-    dic = {"Produto":data["Produto"], "Ano":data["Ano"],"ValorVenda":[],"Fabricante":data["Fabricante"],"Loja":data["Loja"]}
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+def ranking_dos_produtos_com_menores_venda_geral_e_por_loja(data):
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    #dats = dats.sort_values(['ValorVenda','Produto'], ascending=False)
-    produtos = set()
-    for p in range(len(dats["Produto"])):
-        prod = dic["Produto"][p]
-        produtos.add(prod)
+    with st.spinner('Analisando dados...'):
 
-    valVendas = []
-    for prod in produtos:
-        datP = dats.loc[dats["Produto"] == prod]
-        lista = datP["ValorVenda"].values.tolist()
-        soma = sum(lista)
-        valVendas.append(soma)
+        dic = {"Produto": data["Produto"], "Ano": data["Ano"], "ValorVenda": [
+        ], "Fabricante": data["Fabricante"], "Loja": data["Loja"]}
+        valores = data["ValorVenda"].values.tolist()
 
-    dataFrame = pd.DataFrame({"Produto":list(produtos),"Valor Vendas":valVendas})
-    dataFrame = dataFrame.sort_values(['Valor Vendas','Produto'], ascending=False)
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
 
-    st.write("Ranking Geral (Maior para o Menor)")
-    sns.barplot(data = dataFrame, x="Valor Vendas", y="Produto", estimator = np.sum, palette="tab10")
-    st.pyplot()
-    st.write(dataFrame)
+        dic["ValorVenda"] = valores
 
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-    for loja in loj:
-        datL = dats.loc[dats["Loja"] == loja]
+        dataset = pd.DataFrame(dic)
 
-        valVendas = []
-        for prod in produtos:
-            datP = datL.loc[datL["Produto"] == prod]
+        produtos_set = set()
+
+        for p in range(len(dataset["Produto"])):
+            produto = dic["Produto"][p]
+            produtos_set.add(produto)
+
+        valor_das_vendas = []
+        for produto in produtos_set:
+            datP = dataset.loc[dataset["Produto"] == produto]
             lista = datP["ValorVenda"].values.tolist()
             soma = sum(lista)
-            valVendas.append(soma)
+            valor_das_vendas.append(soma)
 
-        st.write("Raanking Loja -> ",str(loja))
-        dataFrame = pd.DataFrame({"Produto":list(produtos),"Valor Vendas":valVendas})
-        dataFrame = dataFrame.sort_values(['Valor Vendas','Produto'], ascending=False)
-        sns.barplot(data = dataFrame, x="Valor Vendas", y="Produto", estimator = np.sum, palette="tab10")
-        plt.title("Ranking Loja -> "+str(loja))
-        st.pyplot()
-        st.write(dataFrame)
+        dataFrame = pd.DataFrame(
+            {"Produto": list(produtos_set), "Valor Vendas": valor_das_vendas})
+        dataFrame = dataFrame.sort_values(
+            ['Valor Vendas', 'Produto'], ascending=True)
 
-#ok
-def rankingProdutosMenor(data):
-    st.write("Ranking Produtos Geral")
-    dic = {"Produto":data["Produto"], "Ano":data["Ano"],"ValorVenda":[],"Fabricante":data["Fabricante"],"Loja":data["Loja"]}
+        ranking_dos_produtos_com_menores_venda_geral(dataFrame)
+        ranking_dos_produtos_com_menores_venda_por_loja(
+            dataFrame, produtos_set)
 
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
+    st.success('Pronto! :)')
 
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    #dats = dats.sort_values(['ValorVenda','Produto'], ascending=False)
-    produtos = set()
-    for p in range(len(dats["Produto"])):
-        prod = dic["Produto"][p]
-        produtos.add(prod)
+# J - Faça um ranking dos produtos mais rentáveis no geral e por loja
 
-    valVendas = []
-    for prod in produtos:
-        datP = dats.loc[dats["Produto"] == prod]
-        lista = datP["ValorVenda"].values.tolist()
-        soma = sum(lista)
-        valVendas.append(soma)
 
-    dataFrame = pd.DataFrame({"Produto":list(produtos),"Valor Vendas":valVendas})
-    dataFrame = dataFrame.sort_values(['Valor Vendas','Produto'], ascending=True)
-
-    st.write("Ranking Geral (Maior para o Menor)")
-    sns.barplot(data = dataFrame, x="Valor Vendas", y="Produto", estimator = np.sum, palette="tab10")
+def ranking_dos_produtos_mais_rentaveis_no_geral(data):
+    dataset_ranking = data
+    sns.catplot(x="Rentabilidade", y="Produto", kind="bar", data=dataset_ranking, estimator=np.sum,
+                palette="tab10").set(title="Ranking dos produtos mais rentáveis no geral").fig.set_figwidth(8)
     st.pyplot()
-    st.write(dataFrame)
 
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-    for loja in loj:
-        datL = dats.loc[dats["Loja"] == loja]
 
-        valVendas = []
+def ranking_dos_produtos_mais_rentaveis_por_loja(data, lojas, produtos):
+    dataset = data
+
+    for loja in lojas:
+        datP = dataset.loc[dataset["Loja"] == loja]
+
+        rentabilidade = {"Produto": [], "Rentabilidade": []}
         for prod in produtos:
-            datP = datL.loc[datL["Produto"] == prod]
-            lista = datP["ValorVenda"].values.tolist()
-            soma = sum(lista)
-            valVendas.append(soma)
-
-        st.write("Raanking Loja -> ",str(loja))
-        dataFrame = pd.DataFrame({"Produto":list(produtos),"Valor Vendas":valVendas})
-        dataFrame = dataFrame.sort_values(['Valor Vendas','Produto'], ascending=True)
-        sns.barplot(data = dataFrame, x="Valor Vendas", y="Produto", estimator = np.sum, palette="tab10")
-        plt.title("Ranking Loja -> "+str(loja))
-        st.pyplot()
-        st.write(dataFrame)
-
-#ok
-def valorVendasLoja(data):
-    st.write("Ranking Vendas por Loja (Em reais)")
-
-    dic = {"Produto":data["Produto"], "Ano":data["Ano"],"ValorVenda":[],"Fabricante":data["Fabricante"],"Loja":data["Loja"]}
-
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
-
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    #dats = dats.sort_values(['ValorVenda','Produto'], ascending=False)
-    valVendas = []
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-
-    for loja in loj:
-        datP = dats.loc[dats["Loja"] == loja]
-        lista = datP["ValorVenda"].values.tolist()
-        soma = sum(lista)
-        valVendas.append(soma)
-
-    dataFrame = pd.DataFrame({"Loja":loj,"Valor Vendas":valVendas})
-    dataFrame = dataFrame.sort_values(['Valor Vendas'], ascending=False)
-    sns.barplot(data = dataFrame, x="Loja", y="Valor Vendas", estimator = np.sum, palette="pastel")
-    plt.title("Ranking Vendas por Loja (Em reais)")
-    st.pyplot()
-    st.write(dataFrame)
-
-def valorVendasVendedor(data):
-    dic = {"Ano":data["Ano"],"ValorVenda":[],"Categoria":data["Categoria"],"Mes":data["Mes"],"Produto":data["Produto"],"Fabricante":data["Fabricante"],"Loja":data["Loja"],"Vendedor":data["Vendedor"]}
-
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
-
-    dic["ValorVenda"] = valores
-    dats = pd.DataFrame(dic)
-    st.write("Ranking de Vendedores por Ano")
-    anosSet = [2014,2015,2016,2017,2018,2019]
-    for ano in anosSet:
-        datA = dats.loc[dats["Ano"] == ano]
-        sns.barplot(data = dats,  y="Vendedor", x="ValorVenda", estimator = np.sum, palette="tab20")
-        plt.title("Ranking Vendedores "+str(ano))
-
-        st.pyplot()
-
-    vendedorLoja(dats)
-
-def vendedorLoja(data):
-    dats = data
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-    st.write("Ranking de Vendedores para Cada Loja (Geral e por Ano)")
-    for loja in loj:
-        datP = dats.loc[dats["Loja"] == loja]
-
-        sns.barplot(data = datP, y="Vendedor", x="ValorVenda", hue = "Ano", estimator = np.sum, palette="bright")
-        plt.title("Ranking Vendedores Loja -> "+str(loja)+" por Ano")
-        st.pyplot()
-
-        sns.barplot(data = datP, y="Vendedor", x="ValorVenda", estimator = np.sum, palette="Set2")
-        plt.title("Ranking Geral Vendedores Loja -> "+str(loja))
-        st.pyplot()
-
-#ok
-def rankingRentaveis(data):
-    st.write("Ranking Rentáveis (Valor Venda - Preço Custo)")
-
-    dic = {"Produto":data["Produto"], "Ano":data["Ano"],"ValorVenda":[],"Fabricante":data["Fabricante"],"Loja":data["Loja"],"Custo":[],"Rentabilidade":[]}
-
-    valores = data["ValorVenda"]
-    valores = valores.values.tolist()
-    custos = data["preço Custo"]
-    custos = custos.values.tolist()
-    for v in range(len(valores)):
-        valores[v] = float(valores[v].replace(",", "."))
-        custos[v] = float(custos[v].replace(",","."))
-        dic["Rentabilidade"].append(valores[v]-custos[v])
-
-    dic["ValorVenda"] = valores
-    dic["Custo"] = custos
-    dats = pd.DataFrame(dic)
-    #dats = dats.sort_values(['ValorVenda','Produto'], ascending=False)
-    valVendas = []
-    loj = ["R1296", "BA7783", "JP8825", "RG7742", "AL1312", "GA7751", "JB6325"]
-    st.write("Ranking Rentáveis (Geral)")
-    #
-    pset = set()
-    produtos = data["Produto"]
-    produtos = produtos.values.tolist()
-    for k in range(len(produtos)):
-        pset.add(produtos[k])
-
-    rent = {"Produto":[] , "Rentabilidade":[]}
-    for prod in pset:
-        df = dats.loc[dats["Produto"] == prod]
-        soma = df["Rentabilidade"].sum()
-        rent["Produto"].append(prod)
-        rent["Rentabilidade"].append(soma)
-
-    rentDic = rent
-    rent = pd.DataFrame(rent)
-    rent = rent.sort_values(['Rentabilidade','Produto'], ascending=False)
-
-    sns.barplot(data = rent, x="Rentabilidade", y="Produto", estimator = np.sum, palette="Set1")
-    plt.title("Ranking Rentáveis (Geral)")
-    st.pyplot()
-    st.write(rent)
-    #
-
-    for loja in loj:
-        datP = dats.loc[dats["Loja"] == loja]
-        st.write("Ranking Rentáveis Loja -> "+str(loja))
-
-        rent = {"Produto":[] , "Rentabilidade":[]}
-        for prod in pset:
             df = datP.loc[datP["Produto"] == prod]
             soma = df["Rentabilidade"].sum()
-            rent["Produto"].append(prod)
-            rent["Rentabilidade"].append(soma)
+            rentabilidade["Produto"].append(prod)
+            rentabilidade["Rentabilidade"].append(soma)
 
-        rentDic = rent
-        rent = pd.DataFrame(rent)
-        rent = rent.sort_values(['Rentabilidade','Produto'], ascending=False)
+        rentabilidade = pd.DataFrame(rentabilidade).sort_values(
+            ['Rentabilidade', 'Produto'], ascending=False)
 
-        sns.barplot(data = rent, x="Rentabilidade", y="Produto", estimator = np.sum, palette="pastel")
-        plt.title("Ranking Rentáveis Loja --> "+str(loja))
+        sns.catplot(x="Rentabilidade", y="Produto", kind="bar", data=rentabilidade, estimator=np.sum, palette="tab10").set(
+            title="Ranking dos produtos mais rentáveis para a loja "+str(loja)).fig.set_figwidth(8)
         st.pyplot()
-        st.write(rent)
-
-        ##sns.barplot(data = datP, x="Rentabilidade", y="Produto", estimator = np.sum, palette="pastel")
-        ##plt.title("Ranking Rentáveis Loja -> "+str(loja))
-        ##st.pyplot()
 
 
-###################
+def ranking_dos_produtos_mais_rentaveis_no_geral_e_por_loja(data):
+
+    with st.spinner('Analisando dados...'):
+        dic = {"Produto": data["Produto"], "Ano": data["Ano"], "ValorVenda": [
+        ], "Fabricante": data["Fabricante"], "Loja": data["Loja"], "Custo": [], "Rentabilidade": []}
+        lojas = ["R1296", "BA7783", "JP8825",
+                 "RG7742", "AL1312", "GA7751", "JB6325"]
+
+        valores = data["ValorVenda"].values.tolist()
+        custos = data["preço Custo"].values.tolist()
+
+        for a in range(len(valores)):
+            valores[a] = float(valores[a].replace(",", "."))
+            custos[a] = float(custos[a].replace(",", "."))
+            dic["Rentabilidade"].append(valores[a]-custos[a])
+
+        dic["ValorVenda"] = valores
+        dic["Custo"] = custos
+
+        dataset = pd.DataFrame(dic)
+
+        valVendas = []
+
+        produtos_set = set()
+        produtos = data["Produto"].values.tolist()
+
+        for k in range(len(produtos)):
+            produtos_set.add(produtos[k])
+
+        rentabilidade = {"Produto": [], "Rentabilidade": []}
+        for prod in produtos_set:
+            df = dataset.loc[dataset["Produto"] == prod]
+            soma = df["Rentabilidade"].sum()
+            rentabilidade["Produto"].append(prod)
+            rentabilidade["Rentabilidade"].append(soma)
+
+        rentabilidade = pd.DataFrame(rentabilidade).sort_values(
+            ['Rentabilidade', 'Produto'], ascending=False)
+
+        ranking_dos_produtos_mais_rentaveis_no_geral(rentabilidade)
+        ranking_dos_produtos_mais_rentaveis_por_loja(
+            dataset, lojas, produtos_set)
+
+    st.success('Pronto! :)')
+
+# K - Faça um Ranking de vendas por lojas
+
+
+def ranking_de_vendas_por_lojas(data):
+
+    with st.spinner('Analisando dados...'):
+        dic = {"Produto": data["Produto"], "Ano": data["Ano"], "ValorVenda": [
+        ], "Fabricante": data["Fabricante"], "Loja": data["Loja"]}
+        valores = data["ValorVenda"].values.tolist()
+
+        for v in range(len(valores)):
+            valores[v] = float(valores[v].replace(",", "."))
+
+        dic["ValorVenda"] = valores
+        dats = pd.DataFrame(dic)
+        valVendas = []
+        loj = ["R1296", "BA7783", "JP8825",
+               "RG7742", "AL1312", "GA7751", "JB6325"]
+
+        for loja in loj:
+            datP = dats.loc[dats["Loja"] == loja]
+            lista = datP["ValorVenda"].values.tolist()
+            soma = sum(lista)
+            valVendas.append(soma)
+
+        dataFrame = pd.DataFrame({"Loja": loj, "Valor Vendas": valVendas})
+        dataFrame = dataFrame.sort_values(['Valor Vendas'], ascending=False)
+
+        sns.catplot(x="Loja", y="Valor Vendas", kind="bar", data=dataFrame, estimator=np.sum).set(
+            title="Ranking de vendas por lojas").fig.set_figwidth(8)
+        st.pyplot()
+
+    st.success('Pronto! :)')
+
+
+# L - Faça um ranking dos vendedores com maior valor de vendas por loja e ano
+# Não consegui :(
+
+
+############################################################################
+
+
+# STREAMLIT CONFIG
+st.set_page_config(page_title="Análise de vendas - 2ª VA de Ciência de Dados - Armstrong",
+                   page_icon="📊", layout="wide")
 st.set_option('deprecation.showPyplotGlobalUse', False)
-# carregar os dados
-dataset = load_data()
 
-#Padrão Geral
-st.title('Dashboard para Análise de Vendas')
+dataset = gerar_dataset()
+
+st.title('Análise das vendas - Armstrong Lohãns')
+st.sidebar.header('Escolha a opção do relatório')
+
+st.text('\n\n\n\n')
+st.markdown(
+    'Bem vindo ao **dashboard de análise de vendas!**\n\nEscolha uma opção na **_sidebar_** para acessar a **análise de dados** de um item específico!')
 
 
-# SIDEBAR
+hide_streamlit_style = """
+            <style>
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-st.sidebar.header("Opções")
+# A - Faça um gráfico do total de vendas por ano
+if st.sidebar.button("Gráfico do total de vendas por ano"):
+    st.subheader('Gráfico do total de vendas por ano')
+    total_vendas_por_ano(dataset)
 
-if st.sidebar.button("Total de Vendas (Valor) por Ano"):
-    dats = valorVendasAno(dataset)
-if st.sidebar.button("Total de Vendas (Valor) por Categoria"):
-    valorVendasCategoria(dataset)
-if st.sidebar.button("Total de Vendas (Valor) por Categoria por Ano"):
-    valorVendasCategoriaAno(dataset)
-if st.sidebar.button("Total de Vendas (Valor) por Ano por Categoria"):
-    valorVendasAnoCategoria(dataset)
+# B - Faça um gráfico do total de vendas por categoria
+if st.sidebar.button("Gráfico do total de vendas por categoria"):
+    st.subheader('Gráfico do total de vendas por categoria')
+    total_vendas_por_categoria(dataset)
 
-if st.sidebar.button("Total de vendas por categoria pelos meses para cada ano (Em Reais)"):
-    valorVendasMes(dataset)
-if st.sidebar.button("Total Vendas de Produtos por Fabricante (Em Reais)"):
-    valorVendasProdutoFabricante(dataset)
-if st.sidebar.button("Vendas das lojas por categoria (Em Reais)"):
-    valorVendasLojaCategoria(dataset)
-if st.sidebar.button("Rankings Maiores Vendas dos Produtos (Em Reais)"):
-    rankingProdutos(dataset)
-if st.sidebar.button("Rankings Menores Vendas dos Produtos (Em Reais)"):
-    rankingProdutosMenor(dataset)
+# C - Faça um gráfico do total de vendas por categoria por ano
+if st.sidebar.button("Gráfico do total de vendas por categoria por ano"):
+    st.subheader('Gráfico do total de vendas por categoria por ano')
+    total_vendas_por_categoria_por_ano(dataset)
 
-if st.sidebar.button("Ranking dos produtos mais rentáveis"):
-    rankingRentaveis(dataset)
-    #no geral e por loja
-if st.sidebar.button("Ranking de vendas por lojas (Em Reais)"):
-    valorVendasLoja(dataset)
-if st.sidebar.button("Rankings dos vendedores com maior valor de vendas (Em Reais)"):
-    valorVendasVendedor(dataset)
-    #por loja e ano
+# D - Faça um gráfico do total de vendas por ano e categoria
+if st.sidebar.button("Gráfico do total de vendas por ano e categoria"):
+    st.subheader('Gráfico do total de vendas por ano e categoria')
+    total_vendas_por_ano_e_categoria(dataset)
 
+# E - Faça um gráfico do total de vendas por categoria pelos meses para cada ano
+if st.sidebar.button("Gráfico do total de vendas por categoria pelos meses para cada ano"):
+    st.subheader(
+        'Gráfico do total de vendas por categoria pelos meses para cada ano')
+    total_vendas_por_categoria_pelos_meses_para_cada_ano(dataset)
+
+# F - Faça um gráfico dos produto mais vendido por cada fabricante
+if st.sidebar.button("Gráfico dos produto mais vendido por cada fabricante"):
+    st.subheader('Gráfico dos produto mais vendido por cada fabricante')
+    produto_mais_vendido_por_cada_fabricante(dataset)
+
+# G - Faça um gráfico das vendas das lojas por categoria
+if st.sidebar.button("Gráfico das vendas das lojas por categoria"):
+    st.subheader('Gráfico das vendas das lojas por categoria')
+    vendas_das_lojas_por_categoria(dataset)
+
+# H - Faça um Ranking dos produtos com maiores vendas no geral e por loja
+if st.sidebar.button("Ranking dos produtos com maiores vendas no geral e por loja"):
+    st.subheader('Ranking dos produtos com maiores vendas no geral e por loja')
+    ranking_dos_produtos_com_maiores_venda_geral_e_por_loja(dataset)
+
+# I - Faça um Ranking dos produtos com menores vendas no geral e por loja
+if st.sidebar.button("Ranking dos produtos com menores vendas no geral e por loja"):
+    st.subheader('Ranking dos produtos com menores vendas no geral e por loja')
+    ranking_dos_produtos_com_menores_venda_geral_e_por_loja(dataset)
+
+# J - Faça um ranking dos produtos mais rentáveis no geral e por loja
+if st.sidebar.button("Ranking dos produtos mais rentáveis no geral e por loja"):
+    st.subheader('Ranking dos produtos mais rentáveis no geral e por loja')
+    ranking_dos_produtos_mais_rentaveis_no_geral_e_por_loja(dataset)
+
+# K - Faça um Ranking de vendas por lojas
+if st.sidebar.button("Ranking de vendas por lojas"):
+    st.subheader('Ranking de vendas por lojas')
+    ranking_de_vendas_por_lojas(dataset)
+
+# L - Faça um ranking dos vendedores com maior valor de vendas por loja e ano
+# if st.sidebar.button("Ranking dos vendedores com maior valor de vendas por loja e ano"):
+    # Não consegui :(
