@@ -1,0 +1,1 @@
+1ª VA - A finalidade deste projeto está na utilização dos conceitos básicos para a análise de dados conforme a apresentação da disciplina.
